@@ -1,0 +1,129 @@
+# 🚨 ARQUIVOS SENSÍVEIS - NUNCA COMMITAR
+credentials.json
+token.json
+*.json.backup
+*credentials*
+*token*
+
+# Cache e arquivos temporários
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Banco de dados - NUNCA COMMITAR DADOS REAIS
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+database.sql
+backup.sql
+
+# Vector database - cache sensível
+chroma/
+*.faiss
+*.index
+embeddings/
+vector_cache/
+
+# Logs podem conter dados sensíveis
+*.log
+logs/
+debug.log
+error.log
+
+# Virtual environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath
+*.sage.py
+
+# Environments
+.env
+.venv
+.env.local
+.env.production
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# Temporary files
+/tmp/
+temp/
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# System files
+desktop.ini
+.directory
