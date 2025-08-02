@@ -383,3 +383,191 @@ class SQLiteRAGServer:
                 
                 documents.append(schema_text)
                 metadatas.append({"type": "schema", "table": table_name})
+                ids.append(f"schema_{table_name}")
+                
+                # Add sample data as documents
+                cursor.execute(f"SELECT * FROM {table_name} LIMIT 100")
+                rows = cursor.fetchall()
+                
+                for i, row in enumerate(rows):
+                    row_text = f"Dados da tabela {table_name}: " + ", ".join([
+                        f"{key}={value}" for key, value in dict(row).items()
+                    ])
+                    
+                    documents.append(row_text)
+                    metadatas.append({"type": "data", "table": table_name, "row": i})
+                    ids.append(f"data_{table_name}_{i}")
+            
+            # Generate embeddings and store
+            if documents:
+                embeddings = self.embedding_model.encode(documents)
+                
+                self.collection.add(
+                    embeddings=embeddings.tolist(),
+                    documents=documents,
+                    metadatas=metadatas,
+                    ids=ids
+                )
+                
+                logger.info(f"Vector DB populado com {len(documents)} documentos")
+            
+            conn.close()
+            
+        except Exception as e:
+            logger.error(f"Erro ao popular vector DB: {e}")
+            raise
+
+    async def ensure_database_loaded(self):
+        """Ensure database is loaded and ready"""
+        if not self.db_path:
+            await self.authenticate_google_drive()
+            file_info = await self.find_database_file()
+            await self.download_database(file_info)
+            await self.load_database_schema()
+            await self.initialize_rag()
+
+    async def handle_natural_query(self, query: str) -> str:
+        """Handle natural language query"""
+        try:
+            # Use RAG to find relevant context
+            results = self.collection.query(
+                query_texts=[query],
+                n_results=5
+            )
+            
+            context = ""
+            if results['documents']:
+                context = "\n".join(results['documents'][0])
+            
+            # Convert natural language to SQL (simplified approach)
+            sql_query = await self.natural_to_sql(query, context)
+            
+            # Execute the generated SQL
+            result = await self.execute_sql(sql_query)
+            
+            return f"Consulta: {query}\nSQL gerado: {sql_query}\nResultado:\n{result}"
+            
+        except Exception as e:
+            return f"Erro na consulta natural: {str(e)}"
+
+    async def natural_to_sql(self, query: str, context: str) -> str:
+        """Convert natural language to SQL (simplified)"""
+        query_lower = query.lower()
+        
+        # Simple pattern matching
+        if "quantas" in query_lower or "count" in query_lower:
+            # Find table name from context
+            for table_name in self.db_schema.keys():
+                if table_name.lower() in query_lower or "empresa" in query_lower:
+                    return f"SELECT COUNT(*) as total FROM {table_name}"
+            
+            # Default to first table
+            first_table = list(self.db_schema.keys())[0]
+            return f"SELECT COUNT(*) as total FROM {first_table}"
+        
+        if "todos" in query_lower or "listar" in query_lower:
+            # Find table name from context
+            for table_name in self.db_schema.keys():
+                if table_name.lower() in query_lower:
+                    return f"SELECT * FROM {table_name} LIMIT 10"
+            
+            # Default to first table
+            first_table = list(self.db_schema.keys())[0]
+            return f"SELECT * FROM {first_table} LIMIT 10"
+        
+        # Default: show tables
+        return "SELECT name FROM sqlite_master WHERE type='table'"
+
+    async def handle_sql_query(self, sql: str) -> str:
+        """Handle direct SQL query"""
+        return await self.execute_sql(sql)
+
+    async def execute_sql(self, sql: str) -> str:
+        """Execute SQL query safely"""
+        try:
+            # Basic security check
+            sql_lower = sql.lower().strip()
+            forbidden = ['drop', 'delete', 'update', 'insert', 'alter', 'create']
+            
+            if any(cmd in sql_lower for cmd in forbidden):
+                return "Erro: Apenas consultas SELECT são permitidas"
+            
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            cursor.execute(sql)
+            results = cursor.fetchall()
+            
+            if not results:
+                return "Nenhum resultado encontrado"
+            
+            # Format results
+            output = []
+            for row in results:
+                row_dict = dict(row)
+                output.append(str(row_dict))
+            
+            conn.close()
+            
+            return "\n".join(output[:50])  # Limit to 50 rows
+            
+        except Exception as e:
+            return f"Erro SQL: {str(e)}"
+
+    async def handle_get_schema(self) -> str:
+        """Handle schema request"""
+        try:
+            schema_info = []
+            
+            for table_name, info in self.db_schema.items():
+                columns = [f"{col[1]} ({col[2]})" for col in info['columns']]
+                schema_info.append(f"Tabela {table_name}:\n  - " + "\n  - ".join(columns))
+            
+            return "\n\n".join(schema_info)
+            
+        except Exception as e:
+            return f"Erro ao obter schema: {str(e)}"
+
+    async def handle_semantic_search(self, query: str, limit: int = 10) -> str:
+        """Handle semantic search"""
+        try:
+            results = self.collection.query(
+                query_texts=[query],
+                n_results=limit
+            )
+            
+            if not results['documents']:
+                return "Nenhum resultado encontrado"
+            
+            output = []
+            for i, doc in enumerate(results['documents'][0]):
+                score = results['distances'][0][i] if results['distances'] else 0
+                output.append(f"Resultado {i+1} (score: {score:.3f}):\n{doc}")
+            
+            return "\n\n".join(output)
+            
+        except Exception as e:
+            return f"Erro na busca semântica: {str(e)}"
+
+async def main():
+    """Main function to run the MCP server"""
+    server_instance = SQLiteRAGServer()
+    
+    # Run server
+    async with stdio_server() as (read_stream, write_stream):
+        await server_instance.server.run(
+            read_stream,
+            write_stream,
+            InitializationOptions(
+                server_name="cnpj-sqlite-rag-server",
+                server_version="1.0.0",
+                capabilities=server_instance.server.get_capabilities(
+                    notification_options=None,
+                    experimental_capabilities=None,
+                ),
+            ),
+        )
+
+if __name__ == "__main__":
+    asyncio.run(main())
