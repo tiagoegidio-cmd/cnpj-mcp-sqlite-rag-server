@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "cnpj-sqlite-rag-server": {
+      "command": "python",
+      "args": ["C:\\CAMINHO\\PARA\\SUA\\PASTA\\run_from_github.py"],
+      "env": {
+        "PYTHONPATH": "C:\\CAMINHO\\PARA\\SUA\\PASTA"
+      }
+    }
+  }
+}
