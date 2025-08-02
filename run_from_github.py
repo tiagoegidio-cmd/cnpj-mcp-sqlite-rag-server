@@ -33,8 +33,20 @@ class GitHubLauncher:
         
         # Files to download from GitHub
         self.github_files = [
-            "mcp_sqlite_rag_server.py",
-            "requirements.txt"
+            "mcp_sqlite_rag_server.py"  # Only essential file
+            # requirements.txt is optional - we'll install dependencies directly
+        ]
+        
+        # Essential dependencies (hardcoded for reliability)
+        self.essential_packages = [
+            "mcp>=1.0.0",
+            "google-api-python-client>=2.0.0", 
+            "google-auth-oauthlib>=1.0.0",
+            "sentence-transformers>=2.2.2",
+            "chromadb>=0.4.0",
+            "numpy>=1.21.0",
+            "torch>=1.9.0",
+            "transformers>=4.21.0"
         ]
     
     def check_local_credentials(self):
@@ -85,49 +97,56 @@ class GitHubLauncher:
             print(f"❌ Erro ao copiar credentials: {e}")
             return None
     
-    def install_dependencies(self, requirements_path):
-        """Install dependencies from downloaded requirements.txt"""
+    def install_dependencies(self, requirements_path=None):
+        """Install dependencies from hardcoded list or requirements file"""
         try:
-            print("📦 Verificando dependências...")
+            print("📦 Instalando dependências essenciais...")
             
-            # Read requirements
-            with open(requirements_path, 'r') as f:
-                requirements = f.read()
+            # Use hardcoded packages (more reliable)
+            packages_to_install = self.essential_packages
             
-            # Extract only the essential packages (skip built-in modules)
-            essential_packages = []
-            for line in requirements.split('\n'):
-                line = line.strip()
-                if line and not line.startswith('#'):
-                    # Skip built-in modules
-                    if not any(builtin in line.lower() for builtin in [
-                        'sqlite3', 'pathlib', 'tempfile', 'asyncio', 
-                        'logging', 'json', 'hashlib', 'io'
-                    ]):
-                        essential_packages.append(line)
+            # Optionally read from requirements.txt if it exists
+            if requirements_path and requirements_path.exists():
+                print("📋 Encontrou requirements.txt, mesclando dependências...")
+                with open(requirements_path, 'r') as f:
+                    requirements = f.read()
+                
+                for line in requirements.split('\n'):
+                    line = line.strip()
+                    if line and not line.startswith('#') and '==' not in line:
+                        # Skip built-in modules
+                        if not any(builtin in line.lower() for builtin in [
+                            'sqlite3', 'pathlib', 'tempfile', 'asyncio', 
+                            'logging', 'json', 'hashlib', 'io'
+                        ]):
+                            if line not in packages_to_install:
+                                packages_to_install.append(line)
             
-            if essential_packages:
+            if packages_to_install:
+                print(f"📦 Instalando {len(packages_to_install)} pacotes...")
+                
                 import subprocess
-                packages_to_install = ' '.join(essential_packages)
-                print(f"📦 Instalando: {packages_to_install}")
+                for package in packages_to_install:
+                    try:
+                        print(f"   • {package}")
+                        result = subprocess.run([
+                            sys.executable, "-m", "pip", "install", package
+                        ], capture_output=True, text=True, timeout=300)
+                        
+                        if result.returncode != 0:
+                            print(f"   ⚠️  Aviso: {package} - {result.stderr[:100]}")
+                    except Exception as e:
+                        print(f"   ⚠️  Erro: {package} - {str(e)[:100]}")
                 
-                result = subprocess.run([
-                    sys.executable, "-m", "pip", "install"
-                ] + essential_packages, 
-                capture_output=True, text=True)
-                
-                if result.returncode == 0:
-                    print("✅ Dependências instaladas com sucesso")
-                    return True
-                else:
-                    print(f"⚠️  Aviso na instalação: {result.stderr}")
-                    return True  # Continue anyway
+                print("✅ Instalação de dependências concluída")
+                return True
             else:
                 print("✅ Nenhuma dependência adicional necessária")
                 return True
                 
         except Exception as e:
             print(f"⚠️  Erro ao instalar dependências: {e}")
+            print("🔄 Continuando mesmo assim...")
             return True  # Continue anyway
     
     def load_and_run_server(self, server_path):
@@ -254,16 +273,19 @@ class GitHubLauncher:
             if file_path:
                 downloaded_files[filename] = file_path
             else:
-                print(f"❌ Falha ao baixar {filename}")
-                return False
+                if filename == "mcp_sqlite_rag_server.py":
+                    print(f"❌ CRÍTICO: Falha ao baixar {filename}")
+                    return False
+                else:
+                    print(f"⚠️  Opcional: {filename} não encontrado (continuando...)")
         
         # Step 3: Copy credentials to temp directory
         if not self.copy_credentials_to_temp():
             return False
         
-        # Step 4: Install dependencies
-        if "requirements.txt" in downloaded_files:
-            self.install_dependencies(downloaded_files["requirements.txt"])
+        # Step 4: Install dependencies (always, regardless of requirements.txt)
+        requirements_path = downloaded_files.get("requirements.txt")
+        self.install_dependencies(requirements_path)
         
         # Step 5: Run the server
         if "mcp_sqlite_rag_server.py" in downloaded_files:
