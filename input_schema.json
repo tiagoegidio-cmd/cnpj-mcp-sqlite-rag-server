@@ -10,14 +10,16 @@
       "description": "Tipo de operação a ser executada",
       "default": "query_cnpj",
       "enum": ["query_cnpj"],
-      "enumTitles": ["Consultar CNPJ"]
+      "enumTitles": ["Consultar CNPJ"],
+      "editor": "select"
     },
     "cnpj": {
       "title": "CNPJ",
       "type": "string",
       "description": "CNPJ para consulta (apenas números ou formatado)",
       "example": "43227497000198",
-      "prefill": "43227497000198"
+      "prefill": "43227497000198",
+      "editor": "textfield"
     }
   },
   "required": ["cnpj"],
