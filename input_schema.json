@@ -1,6 +1,6 @@
 {
-  "title": "CNPJ Google Drive Connector Input",
-  "description": "Conecta ao Google Drive para consultar base CNPJ em tempo real",
+  "title": "CNPJ Google Drive Connector OAuth 2.0",
+  "description": "Conecta ao Google Drive via OAuth 2.0 para consultar base CNPJ em tempo real",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
@@ -9,25 +9,54 @@
       "type": "string",
       "description": "Tipo de operação a ser executada",
       "default": "query_cnpj",
-      "enum": ["query_cnpj"],
-      "enumTitles": ["Consultar CNPJ"]
+      "enum": ["query_cnpj", "search_by_name"],
+      "enumTitles": ["Consultar CNPJ", "Buscar por Nome"]
     },
     "cnpj": {
       "title": "CNPJ",
       "type": "string",
-      "description": "CNPJ para consulta (apenas números ou formatado)",
+      "description": "CNPJ para consulta (apenas números ou formatado). Usado quando operation=query_cnpj",
       "example": "43227497000198",
       "prefill": "43227497000198",
       "editor": "textfield"
     },
-    "credentials": {
-      "title": "Google Credentials (JSON)",
+    "nome": {
+      "title": "Nome da Empresa",
+      "type": "string", 
+      "description": "Nome ou parte do nome da empresa para busca. Usado quando operation=search_by_name",
+      "example": "N9 PARTICIPACOES",
+      "editor": "textfield"
+    },
+    "limit": {
+      "title": "Limite de Resultados",
+      "type": "integer",
+      "description": "Número máximo de resultados para busca por nome",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 100
+    },
+    "google_access_token": {
+      "title": "Google Access Token",
       "type": "string",
-      "description": "Credenciais Google Cloud Service Account (JSON completo)",
-      "editor": "textarea",
+      "description": "Token de acesso OAuth 2.0 do Google (obrigatório)",
+      "editor": "textfield",
+      "isSecret": true
+    },
+    "google_refresh_token": {
+      "title": "Google Refresh Token", 
+      "type": "string",
+      "description": "Token de atualização OAuth 2.0 do Google (obrigatório)",
+      "editor": "textfield",
+      "isSecret": true
+    },
+    "google_client_secret": {
+      "title": "Google Client Secret",
+      "type": "string", 
+      "description": "Client Secret do OAuth 2.0 (obrigatório)",
+      "editor": "textfield",
       "isSecret": true
     }
   },
-  "required": ["cnpj"],
+  "required": ["operation"],
   "additionalProperties": false
 }

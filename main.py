@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Apify Actor: CNPJ Google Drive Connector
-Conecta ao Google Drive, baixa base CNPJ e executa consultas
+Conecta ao Google Drive via OAuth 2.0, baixa base CNPJ e executa consultas
 Para uso com Claude Projetos
 """
 
@@ -11,62 +11,74 @@ import sqlite3
 import tempfile
 from typing import Dict, Any, Optional
 from apify import Actor
-from google.oauth2 import service_account
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import io
 
 class CNPJGoogleDriveConnector:
-    """Conector principal para CNPJ via Google Drive"""
+    """Conector principal para CNPJ via Google Drive usando OAuth 2.0"""
     
     def __init__(self):
         self.service = None
         self.temp_db_path = None
+        self.credentials = None
         
     async def initialize_drive_connection(self):
-        """Inicializa conexão com Google Drive"""
+        """Inicializa conexão com Google Drive usando OAuth 2.0"""
         try:
-            # Buscar credenciais do environment ou integration body
-            credentials_json = os.getenv('GOOGLE_CREDENTIALS')
+            Actor.log.info("🔐 Inicializando conexão OAuth 2.0...")
             
-            # Se não encontrar, tentar ler do input (fallback)
-            if not credentials_json:
-                # Tentar ler das configurações do Actor
-                try:
-                    import requests
-                    # Como fallback, usar credenciais hardcoded temporariamente
-                    credentials_json = '''{
-  "type": "service_account",
-  "project_id": "bd-cnpj",
-  "private_key_id": "8de40c846175bd3840658718bd3a620aa745fa70",
-  "private_key": "-----BEGIN PRIVATE KEY-----\\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCVAmQqL7jECAJu\\nhUeasBLqIZMSVuUcxRNQFCRlVgB3jhAqU/xOIHGoI7wgPFs4bSRVoXI3JPJjT20A\\nKz6d9Qbk3A+N35/BL1BtUpJXDQM3W7SUaiVYqC9QRe4fcWuVInq7jHBZpzzDSibr\\nCR5u7WVZfRsrCnquDlprh9bnUtof26Y5cs6LKyzmKmSHxlIdcYQfnh0zt4mlRmo0\\nguhhDX+9hHXAGkQJQRAtT+dSplIBQN/mCvQfxDa/sN7LFL7JJ5XTZq89tQqWD5Ay\\nGFgh5qJH3ECzcf+Ybt03/NjgH2nkYskp1+gPrP2fXQWHQWGFyREC7ttYMELsrEmu\\ndyvikdHpAgMBAAECggEALkTl0WusFcLe7m6YQ2I1HVp7jpBI6FwRmSYH/ydrUbRd\\nNKeLir7sS+d8vQ3AzY6mX6iYDKN+WHQLRqgm82loUJw8gDNWKeiFMs0W/8zcmM3z\\nDrq/Cf5/Yo+0VzMi0tY4AhCjulMBvSpDV2wndQ5mEBmW3BCO84klboppor7JWGak\\ntPksqmFEGiJP9o20EzFoBIlzdvFjPiOdvnlwx7guU6JWRaRLHYWwubrBsN7lKNDO\\n3K1p1YiVYb5IDhQolDsRRSNrUohfUAyLbrVJmO5mN/PmCIkqSLMCpBZHBjtDPaVA\\nYLxNNB8dCC5/MqM5SOaewKk/dEgM0RUP7q/TvEOLeQKBgQDEc3yjpZUdA6XeEHO3\\nGfdfgHYCbgMFO0rK/i5pbaeEeHQYQhqKsXMeRjtkJgAOLUGSiXc4X04iHUhzNWMY\\nR4ZbEHnHFz8eVRiucb63b31MEzry2SIW2kXeabvlsG93TUJIXBddz7dxYP6NYK9B\\ntGwVsTbD+so12AInOG9EsEgLQwKBgQDCLXHoVHDR0smjQ1jP41Rc9Hra1iYcaOPl\\n1ZnrwHz6FvAWI7gCYkky/4RHczCeJ7Q6zNyDlVuAHNBoaPuC0zO3MuCfg8glj/FH\\nGqOky5I7YYN3AjNK0SoixS9GGzQksnG351S7QXCKA2aNrFCCPbO8muifdaipAZ7G\\nWsLCSTe9YwKBgQC8oKMJwsDVlh4ahjOFmWIkCgXFuXoe+NqM5NkNlCNoF/xpGne/\\nujjt1cPLGo2tDxlKKcIWl7Q/H1zkeluHAY5pO/2iA5kwd8b2IPNd0Kg/dquAaKrJ\\nxJWXxHCNUAcHR2CgeARbqEncjKR+fVpqPWIWxgzuyoyEfL88h3yXOKhEXwKBgQC8\\nP7Keur5lrSUu0qvXX1z6gUpZviNUh5vpxhtjI0oGaxZ3YEmUhhTRDEcBvfr0WSmx\\nl8pxBuueWFDz6FNtkbQhd4GtI+V2BQa1GG5t5a3vQ6pgRhHUBtQCwYgDP3xd12HI\\nGM1cfSTNqF5UGyoyGf+Wadf8P+UzdA6p3nPSR4lyYQKBgDM6iF7gP4J8gwIwsx5d\\nqMN/H4RzcmIheFMCC0SQ+hpCPxpNPKjnOa4quuLNpjStnAnSu7TJfk/dxSqXRMFn\\nWTBk/FbGTb/b6lubasttjtbwG5BNCXe2F+Gdo0SNT7YlBtoISJas4F9PXIKvv7BP\\njhdpxHgg5wwFwgSFJSyT7YX8\\n-----END PRIVATE KEY-----\\n",
-  "client_email": "cnpj-drive-access@bd-cnpj.iam.gserviceaccount.com",
-  "client_id": "102786034357488294792",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/cnpj-drive-access%40bd-cnpj.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
-}'''
-                except:
-                    pass
+            # Configuração OAuth 2.0
+            client_config = {
+                "web": {
+                    "client_id": "388098591605-eunqel7pdgid80j7v1c49vleetpasn7c.apps.googleusercontent.com",
+                    "project_id": "bd-cnpj",
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                    "client_secret": os.getenv('GOOGLE_CLIENT_SECRET', ''),
+                    "redirect_uris": ["http://localhost:8080/callback"]
+                }
+            }
             
-            if not credentials_json:
-                raise ValueError("GOOGLE_CREDENTIALS não encontrado no environment")
+            # Verificar se temos token de refresh no environment
+            refresh_token = os.getenv('GOOGLE_REFRESH_TOKEN')
+            access_token = os.getenv('GOOGLE_ACCESS_TOKEN')
             
-            Actor.log.info("🔐 Carregando credenciais Google...")
-            
-            # Carregar credenciais
-            credentials_info = json.loads(credentials_json)
-            credentials = service_account.Credentials.from_service_account_info(
-                credentials_info,
-                scopes=['https://www.googleapis.com/auth/drive.readonly']
-            )
+            if refresh_token and access_token:
+                Actor.log.info("🔑 Usando tokens existentes...")
+                
+                # Criar credenciais a partir dos tokens
+                self.credentials = Credentials(
+                    token=access_token,
+                    refresh_token=refresh_token,
+                    token_uri="https://oauth2.googleapis.com/token",
+                    client_id=client_config["web"]["client_id"],
+                    client_secret=client_config["web"]["client_secret"],
+                    scopes=['https://www.googleapis.com/auth/drive.readonly']
+                )
+                
+                # Verificar se o token precisa ser renovado
+                if self.credentials.expired:
+                    Actor.log.info("🔄 Renovando access token...")
+                    self.credentials.refresh(Request())
+                    
+            else:
+                Actor.log.error("❌ Tokens OAuth não encontrados no environment")
+                Actor.log.info("💡 Configure GOOGLE_ACCESS_TOKEN e GOOGLE_REFRESH_TOKEN")
+                return False
             
             # Criar serviço Google Drive
-            self.service = build('drive', 'v3', credentials=credentials)
+            self.service = build('drive', 'v3', credentials=self.credentials)
             
-            Actor.log.info("✅ Conexão com Google Drive estabelecida")
+            # Testar conexão
+            about = self.service.about().get(fields="user").execute()
+            user_email = about.get('user', {}).get('emailAddress', 'Unknown')
+            
+            Actor.log.info(f"✅ Conectado como: {user_email}")
             return True
             
         except Exception as e:
@@ -74,43 +86,84 @@ class CNPJGoogleDriveConnector:
             return False
     
     async def find_cnpj_database(self):
-        """Encontra e baixa o arquivo cnpj.db do Google Drive"""
+        """Encontra e baixa o arquivo cnpj.db do Google Drive compartilhado"""
         try:
-            Actor.log.info("🔍 Procurando pasta BASE DE DADOS...")
+            Actor.log.info("🔍 Procurando arquivo cnpj.db em 'Compartilhados comigo'...")
             
-            # Buscar pasta "BASE DE DADOS"
-            query = "name='BASE DE DADOS' and mimeType='application/vnd.google-apps.folder'"
-            results = self.service.files().list(q=query).execute()
+            # Buscar em arquivos compartilhados
+            # Primeiro, vamos buscar a pasta "BASE DE DADOS" compartilhada
+            query = "name='BASE DE DADOS' and sharedWithMe=true and mimeType='application/vnd.google-apps.folder'"
+            results = self.service.files().list(
+                q=query,
+                fields="files(id,name,owners,permissions,parents)"
+            ).execute()
+            
             folders = results.get('files', [])
+            Actor.log.info(f"📁 Pastas 'BASE DE DADOS' encontradas: {len(folders)}")
             
             if not folders:
-                raise FileNotFoundError("Pasta 'BASE DE DADOS' não encontrada")
+                # Tentar buscar diretamente a pasta BASE B2B
+                Actor.log.info("🔍 Buscando pasta 'BASE B2B' diretamente...")
+                query = "name='BASE B2B' and sharedWithMe=true and mimeType='application/vnd.google-apps.folder'"
+                results = self.service.files().list(
+                    q=query,
+                    fields="files(id,name,owners,permissions,parents)"
+                ).execute()
+                folders = results.get('files', [])
+                
+                if folders:
+                    b2b_folder_id = folders[0]['id']
+                    Actor.log.info(f"✅ Pasta BASE B2B encontrada diretamente: {b2b_folder_id}")
+                else:
+                    raise FileNotFoundError("Nenhuma pasta 'BASE DE DADOS' ou 'BASE B2B' encontrada em compartilhados")
+            else:
+                base_folder_id = folders[0]['id']
+                Actor.log.info(f"✅ Pasta BASE DE DADOS encontrada: {base_folder_id}")
+                
+                # Buscar pasta "BASE B2B" dentro de "BASE DE DADOS"
+                query = f"name='BASE B2B' and parents in '{base_folder_id}' and mimeType='application/vnd.google-apps.folder'"
+                results = self.service.files().list(
+                    q=query,
+                    fields="files(id,name,size)"
+                ).execute()
+                folders = results.get('files', [])
+                
+                if not folders:
+                    raise FileNotFoundError("Pasta 'BASE B2B' não encontrada dentro de 'BASE DE DADOS'")
+                
+                b2b_folder_id = folders[0]['id']
+                Actor.log.info(f"✅ Pasta BASE B2B encontrada: {b2b_folder_id}")
             
-            base_folder_id = folders[0]['id']
-            Actor.log.info(f"✅ Pasta BASE DE DADOS encontrada: {base_folder_id}")
-            
-            # Buscar pasta "BASE B2B" dentro de "BASE DE DADOS"
-            query = f"name='BASE B2B' and parents in '{base_folder_id}' and mimeType='application/vnd.google-apps.folder'"
-            results = self.service.files().list(q=query).execute()
-            folders = results.get('files', [])
-            
-            if not folders:
-                raise FileNotFoundError("Pasta 'BASE B2B' não encontrada dentro de 'BASE DE DADOS'")
-            
-            b2b_folder_id = folders[0]['id']
-            Actor.log.info(f"✅ Pasta BASE B2B encontrada: {b2b_folder_id}")
-            
-            # Buscar arquivo cnpj.db
+            # Buscar arquivo cnpj.db na pasta BASE B2B
             query = f"name='cnpj.db' and parents in '{b2b_folder_id}'"
-            results = self.service.files().list(q=query).execute()
+            results = self.service.files().list(
+                q=query,
+                fields="files(id,name,size,modifiedTime)"
+            ).execute()
             files = results.get('files', [])
             
             if not files:
-                raise FileNotFoundError("Arquivo 'cnpj.db' não encontrado")
+                # Tentar buscar arquivo diretamente por nome em compartilhados
+                Actor.log.info("🔍 Buscando cnpj.db diretamente em compartilhados...")
+                query = "name='cnpj.db' and sharedWithMe=true"
+                results = self.service.files().list(
+                    q=query,
+                    fields="files(id,name,size,modifiedTime)"
+                ).execute()
+                files = results.get('files', [])
+                
+                if not files:
+                    raise FileNotFoundError("Arquivo 'cnpj.db' não encontrado")
             
-            file_id = files[0]['id']
-            file_size = files[0].get('size', 'Unknown')
-            Actor.log.info(f"✅ Arquivo cnpj.db encontrado: {file_id} ({file_size} bytes)")
+            file_info = files[0]
+            file_id = file_info['id']
+            file_size = file_info.get('size', 'Unknown')
+            modified_time = file_info.get('modifiedTime', 'Unknown')
+            
+            Actor.log.info(f"✅ Arquivo cnpj.db encontrado:")
+            Actor.log.info(f"   ID: {file_id}")
+            Actor.log.info(f"   Tamanho: {file_size} bytes")
+            Actor.log.info(f"   Modificado: {modified_time}")
             
             # Baixar arquivo para arquivo temporário
             Actor.log.info("📥 Baixando cnpj.db...")
@@ -120,20 +173,33 @@ class CNPJGoogleDriveConnector:
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
             self.temp_db_path = temp_file.name
             
-            # Download em chunks
-            downloader = io.BytesIO()
-            done = False
-            while not done:
-                status, done = request.next_chunk(out=downloader)
-                if status:
-                    Actor.log.info(f"📥 Download progress: {int(status.progress() * 100)}%")
+            # Download direto (para arquivos menores)
+            file_content = request.execute()
             
             # Salvar arquivo
             with open(self.temp_db_path, 'wb') as f:
-                f.write(downloader.getvalue())
+                f.write(file_content)
             
-            Actor.log.info(f"✅ cnpj.db baixado para: {self.temp_db_path}")
-            return True
+            # Verificar se o arquivo foi baixado corretamente
+            if os.path.exists(self.temp_db_path):
+                downloaded_size = os.path.getsize(self.temp_db_path)
+                Actor.log.info(f"✅ cnpj.db baixado: {downloaded_size} bytes → {self.temp_db_path}")
+                
+                # Teste rápido da conexão SQLite
+                try:
+                    conn = sqlite3.connect(self.temp_db_path)
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT COUNT(*) FROM empresas LIMIT 1")
+                    count = cursor.fetchone()[0]
+                    conn.close()
+                    Actor.log.info(f"✅ Base SQLite válida: {count} empresas")
+                    return True
+                except Exception as e:
+                    Actor.log.error(f"❌ Erro ao validar SQLite: {e}")
+                    return False
+            else:
+                Actor.log.error("❌ Arquivo não foi salvo corretamente")
+                return False
             
         except Exception as e:
             Actor.log.error(f"❌ Erro ao baixar cnpj.db: {e}")
@@ -179,7 +245,7 @@ class CNPJGoogleDriveConnector:
                     "message": "Arquivo cnpj.db não foi baixado corretamente"
                 }
             
-            Actor.log.info(f"🔍 Consultando CNPJ: {cnpj_clean}")
+            Actor.log.info(f"🔍 Consultando CNPJ: {self.format_cnpj(cnpj_clean)}")
             
             conn = sqlite3.connect(self.temp_db_path)
             cursor = conn.cursor()
@@ -194,7 +260,8 @@ class CNPJGoogleDriveConnector:
                     "success": False,
                     "error": "CNPJ não encontrado",
                     "cnpj": cnpj_clean,
-                    "cnpj_formatted": self.format_cnpj(cnpj_clean)
+                    "cnpj_formatted": self.format_cnpj(cnpj_clean),
+                    "message": "Este CNPJ não está presente na base de dados"
                 }
             
             # Obter nomes das colunas
@@ -202,6 +269,29 @@ class CNPJGoogleDriveConnector:
             empresa_data = dict(zip(columns, result))
             
             conn.close()
+            
+            # Formatar endereço completo
+            endereco_parts = []
+            if empresa_data.get('tipo_logradouro') and empresa_data.get('logradouro'):
+                endereco_parts.append(f"{empresa_data['tipo_logradouro']} {empresa_data['logradouro']}")
+            elif empresa_data.get('logradouro'):
+                endereco_parts.append(empresa_data['logradouro'])
+                
+            if empresa_data.get('numero'):
+                endereco_parts.append(f", {empresa_data['numero']}")
+            if empresa_data.get('complemento'):
+                endereco_parts.append(f", {empresa_data['complemento']}")
+            if empresa_data.get('bairro'):
+                endereco_parts.append(f" - {empresa_data['bairro']}")
+            if empresa_data.get('municipio') and empresa_data.get('uf'):
+                endereco_parts.append(f" - {empresa_data['municipio']}/{empresa_data['uf']}")
+            if empresa_data.get('cep'):
+                cep = empresa_data['cep']
+                if len(cep) == 8:
+                    cep = f"{cep[:5]}-{cep[5:]}"
+                endereco_parts.append(f" - CEP: {cep}")
+            
+            endereco_completo = ''.join(endereco_parts)
             
             # Formatar resposta
             response = {
@@ -220,6 +310,7 @@ class CNPJGoogleDriveConnector:
                     "opcao_simples": empresa_data.get('opcao_simples')
                 },
                 "endereco": {
+                    "endereco_completo": endereco_completo,
                     "tipo_logradouro": empresa_data.get('tipo_logradouro'),
                     "logradouro": empresa_data.get('logradouro'),
                     "numero": empresa_data.get('numero'),
@@ -239,8 +330,9 @@ class CNPJGoogleDriveConnector:
                 },
                 "metadata": {
                     "fonte": "Google Drive - cnpj.db",
-                    "consulta_via": "Apify Actor",
-                    "timestamp": Actor.get_env().get('APIFY_STARTED_AT')
+                    "consulta_via": "Apify Actor OAuth 2.0",
+                    "timestamp": Actor.get_env().get('APIFY_STARTED_AT'),
+                    "arquivo_modificado": empresa_data.get('created_at')
                 }
             }
             
@@ -256,6 +348,67 @@ class CNPJGoogleDriveConnector:
                 "cnpj": cnpj
             }
     
+    async def search_by_name(self, nome: str, limit: int = 10) -> Dict[str, Any]:
+        """Busca empresas por nome/razão social"""
+        try:
+            if not self.temp_db_path or not os.path.exists(self.temp_db_path):
+                return {
+                    "success": False,
+                    "error": "Base de dados não disponível"
+                }
+            
+            Actor.log.info(f"🔍 Buscando empresas com nome: {nome}")
+            
+            conn = sqlite3.connect(self.temp_db_path)
+            cursor = conn.cursor()
+            
+            # Buscar por nome
+            cursor.execute("""
+                SELECT cnpj, razao_social, nome_fantasia, situacao_cadastral, municipio, uf
+                FROM empresas 
+                WHERE razao_social LIKE ? OR nome_fantasia LIKE ?
+                LIMIT ?
+            """, (f'%{nome}%', f'%{nome}%', limit))
+            
+            results = cursor.fetchall()
+            conn.close()
+            
+            if not results:
+                return {
+                    "success": True,
+                    "total_found": 0,
+                    "empresas": [],
+                    "message": f"Nenhuma empresa encontrada com o nome '{nome}'"
+                }
+            
+            empresas = []
+            for row in results:
+                empresa = {
+                    "cnpj": row[0],
+                    "cnpj_formatted": self.format_cnpj(row[0]),
+                    "razao_social": row[1],
+                    "nome_fantasia": row[2] or '',
+                    "situacao_cadastral": row[3],
+                    "municipio": row[4],
+                    "uf": row[5]
+                }
+                empresas.append(empresa)
+            
+            return {
+                "success": True,
+                "total_found": len(empresas),
+                "empresas": empresas,
+                "busca_termo": nome
+            }
+            
+        except Exception as e:
+            Actor.log.error(f"❌ Erro na busca por nome: {e}")
+            return {
+                "success": False,
+                "error": "Erro na busca",
+                "message": str(e)
+            }
+    
     def cleanup(self):
         """Limpa arquivos temporários"""
         if self.temp_db_path and os.path.exists(self.temp_db_path):
@@ -265,7 +418,7 @@ class CNPJGoogleDriveConnector:
 async def main():
     """Função principal do Actor"""
     async with Actor:
-        Actor.log.info("🚀 Iniciando CNPJ Google Drive Connector")
+        Actor.log.info("🚀 Iniciando CNPJ Google Drive Connector OAuth 2.0")
         
         # Obter input
         actor_input = await Actor.get_input() or {}
@@ -285,14 +438,20 @@ async def main():
         try:
             # Conectar ao Google Drive
             if not await connector.initialize_drive_connection():
-                Actor.log.error("Falha na conexão com Google Drive")
-                return
+                await Actor.push_data({
+                    "success": False,
+                    "error": "Falha na conexão OAuth",
+                    "message": "Verifique as variáveis GOOGLE_ACCESS_TOKEN e GOOGLE_REFRESH_TOKEN"
+                })
                 return
             
             # Baixar base de dados
             if not await connector.find_cnpj_database():
-                Actor.log.error("Falha ao baixar base de dados CNPJ")
-                return
+                await Actor.push_data({
+                    "success": False,
+                    "error": "Base de dados não encontrada",
+                    "message": "Arquivo cnpj.db não foi encontrado no Google Drive compartilhado"
+                })
                 return
             
             # Processar solicitação
@@ -301,8 +460,11 @@ async def main():
             if operation == 'query_cnpj':
                 cnpj = actor_input.get('cnpj')
                 if not cnpj:
-                    Actor.log.error("CNPJ não fornecido no input")
-                    return
+                    await Actor.push_data({
+                        "success": False,
+                        "error": "CNPJ não fornecido",
+                        "message": "Parâmetro 'cnpj' é obrigatório"
+                    })
                     return
                 
                 result = await connector.query_cnpj(cnpj)
@@ -312,17 +474,44 @@ async def main():
                     Actor.log.info(f"✅ Consulta realizada: {result['dados_cadastrais']['razao_social']}")
                 else:
                     Actor.log.warning(f"⚠️ CNPJ não encontrado: {cnpj}")
+                    
+            elif operation == 'search_by_name':
+                nome = actor_input.get('nome', actor_input.get('name'))
+                limit = actor_input.get('limit', 10)
+                
+                if not nome:
+                    await Actor.push_data({
+                        "success": False,
+                        "error": "Nome não fornecido",
+                        "message": "Parâmetro 'nome' é obrigatório para busca"
+                    })
+                    return
+                
+                result = await connector.search_by_name(nome, limit)
+                await Actor.push_data(result)
+                
+                if result.get("success"):
+                    Actor.log.info(f"✅ Busca realizada: {result['total_found']} empresas encontradas")
+                else:
+                    Actor.log.warning(f"⚠️ Erro na busca: {nome}")
                 
             else:
-                Actor.log.error(f"Operação não suportada: {operation}")
-                return
+                await Actor.push_data({
+                    "success": False,
+                    "error": "Operação não suportada",
+                    "message": f"Operação '{operation}' não é válida. Use 'query_cnpj' ou 'search_by_name'"
+                })
                 return
             
             Actor.log.info("✅ Execução concluída com sucesso")
             
         except Exception as e:
             Actor.log.error(f"❌ Erro fatal: {e}")
-            return
+            await Actor.push_data({
+                "success": False,
+                "error": "Erro fatal",
+                "message": str(e)
+            })
             
         finally:
             # Cleanup

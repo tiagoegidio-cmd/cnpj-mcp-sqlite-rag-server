@@ -1,15 +1,22 @@
-# Apify Actor - CNPJ Google Drive Connector
+# Apify Actor - CNPJ Google Drive Connector OAuth 2.0
 # Dependências necessárias
 
 # Apify SDK
 apify>=1.7.0
 
-# Google APIs
+# Google APIs OAuth 2.0
 google-api-python-client>=2.110.0
 google-auth>=2.23.4
 google-auth-oauthlib>=1.1.0
 google-auth-httplib2>=0.2.0
 
+# Data Processing
+pandas>=1.5.0
+sqlite3
+
 # Utilitários
 requests>=2.31.0
 urllib3>=2.0.7
+
+# Opcional para desenvolvimento local
+python-dotenv>=1.0.0
