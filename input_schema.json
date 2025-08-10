@@ -1,0 +1,25 @@
+{
+  "title": "CNPJ Google Drive Connector Input",
+  "description": "Conecta ao Google Drive para consultar base CNPJ em tempo real",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "operation": {
+      "title": "Operação",
+      "type": "string",
+      "description": "Tipo de operação a ser executada",
+      "default": "query_cnpj",
+      "enum": ["query_cnpj"],
+      "enumTitles": ["Consultar CNPJ"]
+    },
+    "cnpj": {
+      "title": "CNPJ",
+      "type": "string",
+      "description": "CNPJ para consulta (apenas números ou formatado)",
+      "example": "43227497000198",
+      "prefill": "43227497000198"
+    }
+  },
+  "required": ["cnpj"],
+  "additionalProperties": false
+}
