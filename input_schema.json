@@ -1,5 +1,5 @@
 {
-  "title": "Gerador de Tokens OAuth 2.0 - CNPJ Google Drive",
+  "title": "Gerador de Tokens OAuth 2.0",
   "description": "Actor para configurar autenticação OAuth 2.0 com Google Drive",
   "type": "object",
   "schemaVersion": 1,
@@ -9,21 +9,14 @@
       "type": "string",
       "description": "Etapa do processo OAuth",
       "default": "generate_auth_url",
-      "enum": ["generate_auth_url", "process_auth_code", "test_connection"],
-      "enumTitles": [
-        "1. Gerar URL de Autorização",
-        "2. Processar Código de Autorização", 
-        "3. Testar Conexão"
-      ]
+      "enum": ["generate_auth_url", "process_auth_code", "test_connection"]
     },
     "auth_code": {
-      "title": "Código de Autorização",
+      "title": "Código de Autorização", 
       "type": "string",
-      "description": "Código obtido após autorização (apenas para operation=process_auth_code)",
-      "example": "4/0AX4XfWh...",
+      "description": "Código obtido após autorização (opcional)",
       "editor": "textfield"
     }
   },
-  "required": ["operation"],
   "additionalProperties": false
 }
