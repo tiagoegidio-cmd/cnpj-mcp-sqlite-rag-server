@@ -31,7 +31,7 @@ class CNPJGoogleDriveConnector:
             if not credentials_json:
                 raise ValueError("GOOGLE_CREDENTIALS não encontrado no environment")
             
-            await Actor.log.info("🔐 Carregando credenciais Google...")
+            Actor.log.info("🔐 Carregando credenciais Google...")
             
             # Carregar credenciais
             credentials_info = json.loads(credentials_json)
@@ -43,17 +43,17 @@ class CNPJGoogleDriveConnector:
             # Criar serviço Google Drive
             self.service = build('drive', 'v3', credentials=credentials)
             
-            await Actor.log.info("✅ Conexão com Google Drive estabelecida")
+            Actor.log.info("✅ Conexão com Google Drive estabelecida")
             return True
             
         except Exception as e:
-            await Actor.log.error(f"❌ Erro ao conectar Google Drive: {e}")
+            Actor.log.error(f"❌ Erro ao conectar Google Drive: {e}")
             return False
     
     async def find_cnpj_database(self):
         """Encontra e baixa o arquivo cnpj.db do Google Drive"""
         try:
-            await Actor.log.info("🔍 Procurando pasta BASE DE DADOS...")
+            Actor.log.info("🔍 Procurando pasta BASE DE DADOS...")
             
             # Buscar pasta "BASE DE DADOS"
             query = "name='BASE DE DADOS' and mimeType='application/vnd.google-apps.folder'"
