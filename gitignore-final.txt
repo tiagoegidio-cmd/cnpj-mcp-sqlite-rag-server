@@ -1,0 +1,171 @@
+# CNPJ System - Google Drive + Claude Projects
+# Arquivos que devem ser ignorados no Git
+
+# 🔑 CREDENCIAIS (CRÍTICO - NUNCA COMMITAR)
+credentials.json
+service-account-key.json
+google-credentials.json
+*.pem
+*.p12
+client_secret*.json
+
+# 🗃️ DADOS LOCAIS
+data/
+*.db
+*.sqlite
+*.sqlite3
+cnpj.db
+empresas.db
+
+# 📄 ARQUIVOS TEMPORÁRIOS
+*.csv
+*.parquet
+*.xlsx
+*.xls
+temp_data/
+cache/
+downloads/
+
+# 🐍 PYTHON
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 🔧 AMBIENTE VIRTUAL
+venv/
+env/
+ENV/
+.venv/
+.env
+
+# 📊 JUPYTER NOTEBOOKS
+.ipynb_checkpoints
+
+# 📝 LOGS
+*.log
+logs/
+cnpj_system.log
+access.log
+error.log
+
+# ⚙️ CONFIGURAÇÃO LOCAL
+config.local.json
+.env.local
+.env.production
+drive_config.json
+user_config.yaml
+
+# 🗂️ SISTEMA OPERACIONAL
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# 💻 IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 🔄 BACKUP
+backup/
+*.backup
+*.bak
+*.old
+
+# 📦 DEPENDÊNCIAS
+node_modules/
+.npm
+
+# 🧪 TESTES
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# 📱 MOBILE
+*.mobileprovision
+*.p8
+
+# 🌐 WEB
+.sass-cache/
+.webassets-cache
+
+# 📋 DOCUMENTAÇÃO TEMPORÁRIA
+docs/_build/
+
+# 🔍 PESQUISA
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ⚡ CACHE
+.cache/
+*.cache
+.parcel-cache/
+
+# 🎯 ESPECÍFICOS DO PROJETO
+user_data/
+personal_configs/
+test_results/
+performance_logs/
+
+# 📤 UPLOAD TEMPORÁRIO
+uploads/
+tmp/
+temporary/
+
+# 🗜️ ARQUIVOS COMPACTADOS
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# 🎨 ASSETS TEMPORÁRIOS
+*.tmp
+*.temp
+*.swp
+
+# 📧 EMAIL CONFIGS
+mail_config.json
+smtp_credentials.json
+
+# 🔐 TOKENS E CHAVES
+*.token
+access_token.txt
+refresh_token.txt
+api_keys.json
+secrets.json
+
+# IMPORTANTE: SEMPRE VERIFICAR ANTES DE FAZER COMMIT
+# Use: git status
+# Confirme que nenhum arquivo sensível está sendo adicionado
