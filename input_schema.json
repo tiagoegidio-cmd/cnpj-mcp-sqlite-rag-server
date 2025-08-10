@@ -1,22 +1,45 @@
 {
-  "title": "Gerador de Tokens OAuth 2.0",
-  "description": "Actor para configurar autenticação OAuth 2.0 com Google Drive",
+  "title": "CNPJ Google Drive Connector",
+  "description": "Sistema completo para consulta de CNPJs via Google Drive em tempo real",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
     "operation": {
       "title": "Operação",
       "type": "string",
-      "description": "Etapa do processo OAuth",
-      "default": "generate_auth_url",
-      "enum": ["generate_auth_url", "process_auth_code", "test_connection"]
+      "description": "Tipo de operação a ser executada",
+      "default": "query_cnpj",
+      "enum": ["query_cnpj", "search_by_name", "get_statistics"],
+      "enumTitles": [
+        "Consultar CNPJ",
+        "Buscar por Nome",
+        "Estatísticas da Base"
+      ]
     },
-    "auth_code": {
-      "title": "Código de Autorização", 
+    "cnpj": {
+      "title": "CNPJ",
       "type": "string",
-      "description": "Código obtido após autorização (opcional)",
+      "description": "CNPJ para consulta (apenas números ou formatado). Usado quando operation=query_cnpj",
+      "example": "43227497000198",
+      "prefill": "43227497000198",
       "editor": "textfield"
+    },
+    "nome": {
+      "title": "Nome da Empresa",
+      "type": "string",
+      "description": "Nome ou parte do nome da empresa para busca. Usado quando operation=search_by_name",
+      "example": "N9 PARTICIPACOES",
+      "editor": "textfield"
+    },
+    "limit": {
+      "title": "Limite de Resultados",
+      "type": "integer",
+      "description": "Número máximo de resultados para busca por nome (máximo 50)",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 50
     }
   },
+  "required": ["operation"],
   "additionalProperties": false
 }
