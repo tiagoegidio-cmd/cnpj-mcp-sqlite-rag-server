@@ -10,8 +10,7 @@
       "description": "Tipo de operação a ser executada",
       "default": "query_cnpj",
       "enum": ["query_cnpj"],
-      "enumTitles": ["Consultar CNPJ"],
-      "editor": "select"
+      "enumTitles": ["Consultar CNPJ"]
     },
     "cnpj": {
       "title": "CNPJ",
@@ -20,6 +19,13 @@
       "example": "43227497000198",
       "prefill": "43227497000198",
       "editor": "textfield"
+    },
+    "credentials": {
+      "title": "Google Credentials (JSON)",
+      "type": "string",
+      "description": "Credenciais Google Cloud Service Account (JSON completo)",
+      "editor": "textarea",
+      "isSecret": true
     }
   },
   "required": ["cnpj"],
