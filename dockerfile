@@ -1,4 +1,4 @@
-# Dockerfile para Apify Actor Python
+# Dockerfile para Apify Actor Python com MCP
 FROM apify/actor-python:3.11
 
 # Copiar requirements e instalar dependências
@@ -8,5 +8,8 @@ RUN pip install -r requirements.txt
 # Copiar código fonte
 COPY . ./
 
-# Comando principal
+# Suporte para MCP
+ENV MCP_ENABLED=true
+
+# Comando principal (mantém compatibilidade)
 CMD python3 main.py
