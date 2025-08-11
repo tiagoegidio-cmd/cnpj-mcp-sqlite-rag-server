@@ -1,30 +1,40 @@
 {
-  "mcpServers": {
-    "cnpj-google-drive": {
-      "command": "python",
-      "args": ["mcp_server.py"],
-      "env": {
-        "GOOGLE_CLIENT_SECRET": "${GOOGLE_CLIENT_SECRET}",
-        "GOOGLE_ACCESS_TOKEN": "${GOOGLE_ACCESS_TOKEN}",
-        "GOOGLE_REFRESH_TOKEN": "${GOOGLE_REFRESH_TOKEN}"
-      }
+  "mcpVersion": "2024-11-05",
+  "name": "cnpj-google-drive-connector",
+  "version": "1.0.0",
+  "description": "Conector MCP para consulta de CNPJs via Google Drive em tempo real",
+  "author": "tiago.egidio",
+  "license": "MIT",
+  "server": {
+    "command": "python3",
+    "args": ["mcp_server.py"],
+    "env": {
+      "GOOGLE_CLIENT_SECRET": "${GOOGLE_CLIENT_SECRET}",
+      "GOOGLE_ACCESS_TOKEN": "${GOOGLE_ACCESS_TOKEN}",
+      "GOOGLE_REFRESH_TOKEN": "${GOOGLE_REFRESH_TOKEN}"
     }
+  },
+  "capabilities": {
+    "tools": {}
   },
   "tools": [
     {
       "name": "query_cnpj",
-      "description": "Consulta dados de CNPJ na base real via Google Drive",
-      "server": "cnpj-google-drive"
+      "description": "Consulta dados completos de CNPJ na base real via Google Drive",
+      "category": "cnpj",
+      "tags": ["cnpj", "empresa", "google-drive", "consulta"]
     },
     {
-      "name": "search_by_name", 
-      "description": "Busca empresas por nome na base real",
-      "server": "cnpj-google-drive"
+      "name": "search_by_name",
+      "description": "Busca empresas por nome ou razão social na base real",
+      "category": "cnpj", 
+      "tags": ["busca", "nome", "empresa", "pesquisa"]
     },
     {
       "name": "get_statistics",
-      "description": "Retorna estatísticas da base de CNPJs",
-      "server": "cnpj-google-drive"
+      "description": "Retorna estatísticas gerais da base de dados de CNPJs",
+      "category": "cnpj",
+      "tags": ["estatisticas", "base", "dados", "resumo"]
     }
   ]
 }
