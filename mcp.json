@@ -1,0 +1,30 @@
+{
+  "mcpServers": {
+    "cnpj-google-drive": {
+      "command": "python",
+      "args": ["mcp_server.py"],
+      "env": {
+        "GOOGLE_CLIENT_SECRET": "${GOOGLE_CLIENT_SECRET}",
+        "GOOGLE_ACCESS_TOKEN": "${GOOGLE_ACCESS_TOKEN}",
+        "GOOGLE_REFRESH_TOKEN": "${GOOGLE_REFRESH_TOKEN}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "query_cnpj",
+      "description": "Consulta dados de CNPJ na base real via Google Drive",
+      "server": "cnpj-google-drive"
+    },
+    {
+      "name": "search_by_name", 
+      "description": "Busca empresas por nome na base real",
+      "server": "cnpj-google-drive"
+    },
+    {
+      "name": "get_statistics",
+      "description": "Retorna estatísticas da base de CNPJs",
+      "server": "cnpj-google-drive"
+    }
+  ]
+}
