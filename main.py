@@ -623,6 +623,23 @@ async def main():
                 "message": str(e)
             })
 
+# Adicionar ao final do main.py
+async def mcp_main():
+    """Função principal para modo MCP"""
+    from mcp_server import CNPJMCPServer
+    
+    server = CNPJMCPServer()
+    
+    # Detectar modo de execução
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--mcp":
+        # Modo MCP
+        tools = await server.list_tools()
+        print(json.dumps(tools, indent=2, ensure_ascii=False))
+    else:
+        # Modo Actor normal
+        await main()
+
 if __name__ == "__main__":
     import asyncio
-    asyncio.run(main())
+    asyncio.run(mcp_main())
